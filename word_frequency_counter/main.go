@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -12,28 +13,70 @@ type dict struct {
 	freq int
 }
 
+func sorter(wordsFreq map[string]int) []dict {
+
+	var freqTuple []dict
+	for w, f := range wordsFreq {
+		freqTuple = append(freqTuple, dict{w, f})
+	}
+
+	sort.Slice(freqTuple, func(i, j int) bool {
+		return freqTuple[i].freq > freqTuple[j].freq
+	})
+	return freqTuple
+}
+
 func main() {
-	content, err := os.ReadFile("pg24681.txt")
+	filesPath := "./txtFiles"
+	files, err := os.ReadDir(filesPath)
 
 	if err != nil {
-		fmt.Print("ERROR", err)
+		fmt.Print("No Files found inside this directory!")
 		return
 	}
 
-	words := strings.Fields(string(content))
-	frequency := map[string]int{}
+	txtFiles := []string{}
 
-	for i := range words {
-		frequency[words[i]] = frequency[words[i]] + 1
+	for _, entry := range files {
+		txtFiles = append(txtFiles, entry.Name())
 	}
 
-	var freqs []dict
-	for w, f := range frequency {
-		freqs = append(freqs, dict{w, f})
+	wordsFrequency := map[string]int{}
+	wordsFileName := map[string]map[string]int{}
+
+	for _, fileName := range txtFiles {
+		fullPath := filepath.Join(filesPath, fileName)
+		content, err := os.ReadFile(fullPath)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		words := strings.Fields(string(content))
+
+		for _, word := range words {
+			wordsFrequency[word] += 1
+
+			if wordsFileName[word] == nil {
+				wordsFileName[word] = make(map[string]int) 
+			}
+			wordsFileName[word][fileName] += 1
+		}
+
 	}
 
-	sort.Slice(freqs, func(i, j int) bool {
-		return freqs[i].freq > freqs[j].freq
-	})
-	fmt.Println(freqs[:10])
+	globalSortedDict := sorter(wordsFrequency)
+
+	for _, wordFreqTuple := range globalSortedDict[:10] {
+		maxFile := ""
+		maxCount := 0
+
+		for fileName, freq := range wordsFileName[wordFreqTuple.word] {
+			if freq > maxCount {
+				maxFile = fileName
+				maxCount = freq
+			}
+		}
+		fmt.Printf("Word: %v	; File: %v	; Frequency: %v \n", wordFreqTuple.word, maxFile, maxCount)
+	}
 }
